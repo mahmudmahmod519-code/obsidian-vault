@@ -1,0 +1,113 @@
+import '../models/album.dart';
+import '../models/album_photo.dart';
+
+const List<AlbumPhoto> demoPhotos = [
+  AlbumPhoto(imageUrl: 'assets/images/vault01.jpg', title: 'قمة الثلج', date: 'اليوم'),
+  AlbumPhoto(imageUrl: 'assets/images/vault02.jpg', title: 'واجهة زجاجية', date: 'اليوم'),
+  AlbumPhoto(imageUrl: 'assets/images/vault03.jpg', title: 'ظل النخيل', date: 'اليوم', isFavorite: true),
+  AlbumPhoto(imageUrl: 'assets/images/vault04.jpg', title: 'ممر حجري', date: 'اليوم'),
+  AlbumPhoto(imageUrl: 'assets/images/vault05.jpg', title: 'ضوء الصباح', date: 'أمس'),
+  AlbumPhoto(imageUrl: 'assets/images/vault06.jpg', title: 'سطح المدينة', date: 'أمس', isFavorite: true),
+  AlbumPhoto(imageUrl: 'assets/images/vault07.jpg', title: 'أمواج هادئة', date: 'أمس'),
+  AlbumPhoto(imageUrl: 'assets/images/vault08.jpg', title: 'غروب ذهبي', date: 'أمس'),
+  AlbumPhoto(imageUrl: 'assets/images/vault09.jpg', title: 'طريق الجبل', date: '12 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault10.jpg', title: 'نافذة قديمة', date: '12 أكتوبر', isFavorite: true),
+  AlbumPhoto(imageUrl: 'assets/images/vault11.jpg', title: 'سماء مرصعة', date: '12 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault12.jpg', title: 'انعكاس', date: '12 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault13.jpg', title: 'كثبان', date: '12 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault14.jpg', title: 'أزقة', date: '12 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault15.jpg', title: 'مرفأ', date: '5 أكتوبر', isFavorite: true),
+  AlbumPhoto(imageUrl: 'assets/images/vault16.jpg', title: 'ضوء خلفي', date: '5 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault17.jpg', title: 'صمت', date: '5 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault18.jpg', title: 'خط الأفق', date: '5 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault19.jpg', title: 'تفاصيل', date: '5 أكتوبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault20.jpg', title: 'لون داكن', date: '5 أكتوبر', isFavorite: true),
+  AlbumPhoto(imageUrl: 'assets/images/vault21.jpg', title: 'ظلال', date: '28 سبتمبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault22.jpg', title: 'مطر', date: '28 سبتمبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault23.jpg', title: 'برج', date: '28 سبتمبر'),
+  AlbumPhoto(imageUrl: 'assets/images/vault24.jpg', title: 'نجوم', date: '28 سبتمبر'),
+];
+
+String _photo(int index) => demoPhotos[index].imageUrl;
+
+final List<Album> demoAlbums = [
+  Album(
+    id: 'mountains',
+    name: 'الجبال',
+    coverImage: _photo(0),
+    photos: [0, 4, 8, 12, 16, 20].map(_photo).toList(),
+    category: 'الجبال',
+    dateLabel: 'أكتوبر 2026',
+    isLocked: true,
+  ),
+  Album(
+    id: 'city',
+    name: 'المدينة',
+    coverImage: _photo(1),
+    photos: [1, 5, 9, 13, 17, 21].map(_photo).toList(),
+    category: 'المدينة',
+    dateLabel: 'أكتوبر 2026',
+    isFavorite: true,
+  ),
+  Album(
+    id: 'sea',
+    name: 'البحر',
+    coverImage: _photo(2),
+    photos: [2, 6, 10, 14, 18, 22].map(_photo).toList(),
+    category: 'البحر',
+    dateLabel: 'سبتمبر 2026',
+  ),
+  Album(
+    id: 'sunset',
+    name: 'الغروب',
+    coverImage: _photo(3),
+    photos: [3, 7, 11, 15, 19, 23].map(_photo).toList(),
+    category: 'الغروب',
+    dateLabel: 'سبتمبر 2026',
+    isFavorite: true,
+  ),
+  Album(
+    id: 'nature',
+    name: 'الطبيعة',
+    coverImage: _photo(4),
+    photos: [0, 2, 4, 6, 8, 10].map(_photo).toList(),
+    category: 'الطبيعة',
+    dateLabel: 'أغسطس 2026',
+  ),
+  Album(
+    id: 'night',
+    name: 'الليل',
+    coverImage: _photo(5),
+    photos: [5, 9, 11, 15, 21, 23].map(_photo).toList(),
+    category: 'الليل',
+    dateLabel: 'أغسطس 2026',
+    isLocked: true,
+  ),
+  Album(
+    id: 'travel',
+    name: 'سفر',
+    coverImage: _photo(6),
+    photos: [1, 3, 7, 13, 17, 19].map(_photo).toList(),
+    category: 'الطبيعة',
+    dateLabel: 'يوليو 2026',
+  ),
+  Album(
+    id: 'memories',
+    name: 'ذكريات',
+    coverImage: _photo(7),
+    photos: [4, 8, 12, 16, 20, 22].map(_photo).toList(),
+    category: 'الكل',
+    dateLabel: 'يونيو 2026',
+    isFavorite: true,
+  ),
+];
+
+const List<String> albumCategories = [
+  'الكل',
+  'الجبال',
+  'المدينة',
+  'البحر',
+  'الغروب',
+  'الطبيعة',
+  'الليل',
+];
