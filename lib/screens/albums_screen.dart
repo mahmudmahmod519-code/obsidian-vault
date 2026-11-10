@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/gallery_repository.dart';
 import '../models/album.dart';
@@ -158,6 +159,37 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     );
     await _load();
     if (mounted) showAppToast(context, 'تم إنشاء الألبوم');
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1920,
+    );
+    if (picked == null || !mounted) return;
+
+    try {
+      final bytes = await picked.readAsBytes();
+      final fileName = picked.name.split('/').last;
+      final date = 'اليوم';
+      final albumId = 'memories'; // الألبوم الافتراضي
+
+      await GalleryRepository.instance.addPhoto(
+        title: fileName,
+        date: date,
+        albumId: albumId,
+        assetPath: picked.path,
+        imageBytes: bytes,
+        isFavorite: false,
+      );
+
+      await _load();
+      if (mounted) showAppToast(context, 'تم إضافة الصورة: $fileName');
+    } catch (e) {
+      if (mounted) showAppToast(context, 'فشل إضافة الصورة');
+    }
   }
 
   void _showMoreSheet() {
@@ -377,7 +409,55 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _createAlbum,
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: AppColors.surfaceContainerLow,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (context) => Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.add_photo_alternate,
+                      color: AppColors.primaryContainer,
+                    ),
+                    title: const Text('إضافة صورة من المعرض'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.add,
+                      color: AppColors.primaryContainer,
+                    ),
+                    title: const Text('إنشاء ألبوم جديد'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _createAlbum();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          );
+        },
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: AppColors.onPrimary,
         elevation: 4,

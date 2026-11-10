@@ -14,7 +14,7 @@ class LockScreen extends StatefulWidget {
 
 class _LockScreenState extends State<LockScreen>
     with SingleTickerProviderStateMixin {
-  static const _correctPin = '1234';
+  static const _correctPin = '1910';
 
   String _pin = '';
   bool _error = false;
@@ -272,7 +272,7 @@ class _LockScreenState extends State<LockScreen>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'PIN تجريبي: 1234',
+                            'كلمة المرور: 1910',
                             style: AppTextStyles.labelMonoSmall(
                               AppColors.outlineVariant,
                             ).copyWith(fontSize: 10),

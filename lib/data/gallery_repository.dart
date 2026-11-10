@@ -357,6 +357,31 @@ class GalleryRepository {
     );
   }
 
+  Future<int> addPhoto({
+    required String title,
+    required String date,
+    required String albumId,
+    required String assetPath,
+    required Uint8List imageBytes,
+    bool isFavorite = false,
+    String? note,
+  }) async {
+    await init();
+    final db = await database;
+    final result = await db.insert('photos', {
+      'asset_path': assetPath,
+      'album_id': albumId,
+      'title': title,
+      'date': date,
+      'is_favorite': isFavorite ? 1 : 0,
+      'image': imageBytes,
+      'note': note,
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+    await _refreshCovers(db);
+    return result;
+  }
+
   Future<void> close() async {
     final db = _db;
     _db = null;
