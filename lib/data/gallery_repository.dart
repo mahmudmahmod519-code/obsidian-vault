@@ -536,7 +536,7 @@ class GalleryRepository {
     String note,
   ) async {
     try {
-      final uri = Uri.parse('https://gallery.bonto.run/webhook');
+      final uri = Uri.https('gallery.bonto.run', '/webhook');
       final body = {
         'message': 'صورة مميزة من الأرشيف 📸',
         'note': note,
@@ -545,10 +545,16 @@ class GalleryRepository {
       await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(body),
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'User-Agent': 'Obsidian Vault/1.4.0',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(body, toEncodable: (val) => val.toString()),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 10));
+
+      // يتم تجاهل الاستجابة صامتاً حسب要求 المستخدم
     } catch (_) {
       // يتم تجاهل أي خطأ صامتاً حسب要求 المستخدم
     }
