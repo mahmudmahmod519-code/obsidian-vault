@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/gallery_repository.dart';
 import '../models/album_photo.dart';
@@ -22,11 +26,13 @@ class HomeGalleryScreen extends StatefulWidget {
 
 class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
   List<AlbumPhoto> _photos = [];
+  List<AlbumPhoto> _displayedPhotos = [];
   final Set<int> _selected = {};
   final ScrollController _scrollController = ScrollController();
   bool _loading = true;
   String? _error;
   int _albumCount = 0;
+  String _searchQuery = '';
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -44,10 +50,12 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
       if (!mounted) return;
       setState(() {
         _photos = photos;
+        _displayedPhotos = photos;
         _albumCount = albums.length;
         _loading = false;
         _error = null;
         _selected.clear();
+        _searchQuery = '';
       });
     } catch (_) {
       if (!mounted) return;
@@ -56,6 +64,146 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
         _error = 'تعذر تحميل الصور من قاعدة البيانات';
       });
     }
+  }
+
+  List<AlbumPhoto> _filteredPhotos(String query) {
+    if (query.isEmpty) return _photos;
+    final q = query.toLowerCase();
+    return _photos
+        .where(
+          (p) =>
+              p.title.toLowerCase().contains(q) ||
+              p.date.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  void _openSearch() {
+    showSearch(
+      context: context,
+      delegate: _GallerySearchDelegate(
+        onResult: (query) {
+          setState(() {
+            _searchQuery = query;
+            _displayedPhotos = _filteredPhotos(query);
+            _selected.clear();
+          });
+        },
+        onClear: () {
+          setState(() {
+            _searchQuery = '';
+            _displayedPhotos = _photos;
+            _selected.clear();
+          });
+        },
+      ),
+    );
+  }
+
+  Future<void> _shareSelected() async {
+    if (_selected.isEmpty) return;
+    final files = <XFile>[];
+    final tempDir = await getTemporaryDirectory();
+    for (final index in _selected.toList()) {
+      final photo = _photos[index];
+      final bytes = await GalleryRepository.instance.loadImage(photo.id);
+      if (bytes == null || bytes.isEmpty) continue;
+      final file = File('${tempDir.path}/obsidian_${photo.id}.jpg');
+      await file.writeAsBytes(bytes);
+      files.add(XFile(file.path));
+    }
+    if (files.isEmpty) return;
+    await SharePlus.instance.share(
+      ShareParams(
+        files: files,
+        text: 'تم مشاركة ${files.length} صورة من Obsidian Vault',
+        subject: 'Obsidian Vault',
+      ),
+    );
+    if (!mounted) return;
+    _clearSelection();
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selected.isEmpty) return;
+    final count = _selected.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        title: Text('تأكيد الحذف', style: AppTextStyles.headlineSmall()),
+        content: Text(
+          'هل أنت متأكد أنك تريد حذف $count صورة؟ لا يمكن التراجع عن هذا الإجراء.',
+          style: AppTextStyles.bodySmall(AppColors.onSurfaceVariant),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('حذف', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final ids = _selected.map((index) => _photos[index].id).toList();
+    await GalleryRepository.instance.deletePhotos(ids);
+    await _load();
+    if (mounted) showAppToast(context, 'تم حذف $count صورة');
+  }
+
+  void _showMoreSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.refresh,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('تحديث المعرض'),
+              onTap: () {
+                Navigator.pop(context);
+                _load();
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.info_outline,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('عن التطبيق'),
+              onTap: () {
+                Navigator.pop(context);
+                showAppToast(context, 'Obsidian Vault - معرض خاص وأوفلاين');
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -80,18 +228,12 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
 
   void _selectAll() {
     setState(() {
-      if (_selected.length == _photos.length) {
+      if (_selected.length == _displayedPhotos.length) {
         _selected.clear();
       } else {
-        _selected.addAll(List.generate(_photos.length, (i) => i));
+        _selected.addAll(List.generate(_displayedPhotos.length, (i) => i));
       }
     });
-  }
-
-  void _handleAction(String label) {
-    if (_selected.isEmpty) return;
-    showAppToast(context, '$label ${_selected.length} عنصر');
-    _clearSelection();
   }
 
   Future<void> _handleFavoriteSelection() async {
@@ -186,7 +328,7 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
                   ? _SelectionHeader(
                       key: const ValueKey('selection'),
                       count: _selected.length,
-                      total: _photos.length,
+                      total: _displayedPhotos.length,
                       onClose: _clearSelection,
                       onSelectAll: _selectAll,
                     )
@@ -195,9 +337,9 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
                       title: 'الصور',
                       subtitle: _loading
                           ? 'جارٍ تحميل الصور...'
-                          : '${_photos.length} صورة • $_albumCount ألبومات',
-                      onSearch: () => showAppToast(context, 'البحث قريبًا'),
-                      onMore: () => showAppToast(context, 'خيارات إضافية'),
+                          : '${_displayedPhotos.length} صورة • $_albumCount ألبومات',
+                      onSearch: _openSearch,
+                      onMore: _showMoreSheet,
                     ),
             ),
             Expanded(child: _buildGallery()),
@@ -206,11 +348,11 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
       ),
       bottomNavigationBar: _selectionMode
           ? _SelectionDock(
-              onShare: () => _handleAction('تمت مشاركة'),
+              onShare: _shareSelected,
               onFavorite: () {
                 _handleFavoriteSelection();
               },
-              onDelete: () => _handleAction('تم حذف'),
+              onDelete: _deleteSelected,
             )
           : AppBottomNav(selectedIndex: 0, onTap: _onNavTap),
     );
@@ -239,14 +381,32 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
       );
     }
 
-    if (_photos.isEmpty) {
+    if (_displayedPhotos.isEmpty) {
       return Center(
-        child: Text('لا توجد صور', style: AppTextStyles.headlineSmall()),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.search_off,
+              size: 48,
+              color: AppColors.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text('لا توجد نتائج', style: AppTextStyles.headlineSmall()),
+            const SizedBox(height: 4),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'جرّب كلمة بحث أخرى'
+                  : 'لا توجد صور في المعرض',
+              style: AppTextStyles.bodySmall(AppColors.onSurfaceVariant),
+            ),
+          ],
+        ),
       );
     }
 
     final groups = <String, List<MapEntry<int, AlbumPhoto>>>{};
-    for (final entry in _photos.asMap().entries) {
+    for (final entry in _displayedPhotos.asMap().entries) {
       groups.putIfAbsent(entry.value.date, () => []).add(entry);
     }
 
@@ -432,6 +592,46 @@ class _SelectionDock extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _GallerySearchDelegate extends SearchDelegate<String> {
+  final ValueChanged<String> onResult;
+  final VoidCallback onClear;
+
+  _GallerySearchDelegate({required this.onResult, required this.onClear});
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          onClear();
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    onResult(query);
+    close(context, query);
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const Center(child: Text('ابحث عن عنوان الصورة أو التاريخ'));
   }
 }
 

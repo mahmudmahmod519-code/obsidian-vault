@@ -100,35 +100,32 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle bodyLarge([Color color = AppColors.onSurface]) =>
-      TextStyle(
-        fontFamily: 'NotoSans',
-        fontFamilyFallback: const ['NotoSansArabic'],
-        fontSize: 16,
-        height: 24 / 16,
-        fontWeight: FontWeight.w400,
-        color: color,
-      );
+  static TextStyle bodyLarge([Color color = AppColors.onSurface]) => TextStyle(
+    fontFamily: 'NotoSans',
+    fontFamilyFallback: const ['NotoSansArabic'],
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: color,
+  );
 
-  static TextStyle bodyMedium([Color color = AppColors.onSurface]) =>
-      TextStyle(
-        fontFamily: 'NotoSans',
-        fontFamilyFallback: const ['NotoSansArabic'],
-        fontSize: 14,
-        height: 20 / 14,
-        fontWeight: FontWeight.w400,
-        color: color,
-      );
+  static TextStyle bodyMedium([Color color = AppColors.onSurface]) => TextStyle(
+    fontFamily: 'NotoSans',
+    fontFamilyFallback: const ['NotoSansArabic'],
+    fontSize: 14,
+    height: 20 / 14,
+    fontWeight: FontWeight.w400,
+    color: color,
+  );
 
-  static TextStyle bodySmall([Color color = AppColors.onSurface]) =>
-      TextStyle(
-        fontFamily: 'NotoSans',
-        fontFamilyFallback: const ['NotoSansArabic'],
-        fontSize: 12,
-        height: 16 / 12,
-        fontWeight: FontWeight.w400,
-        color: color,
-      );
+  static TextStyle bodySmall([Color color = AppColors.onSurface]) => TextStyle(
+    fontFamily: 'NotoSans',
+    fontFamilyFallback: const ['NotoSansArabic'],
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w400,
+    color: color,
+  );
 
   static TextStyle labelMonoSmall([Color color = AppColors.onSurfaceVariant]) =>
       TextStyle(

@@ -32,8 +32,9 @@ void showAppToast(BuildContext context, String message) {
                 message,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.labelMonoSmall(AppColors.primary)
-                    .copyWith(fontSize: 11),
+                style: AppTextStyles.labelMonoSmall(
+                  AppColors.primary,
+                ).copyWith(fontSize: 11),
               ),
             ),
           ],

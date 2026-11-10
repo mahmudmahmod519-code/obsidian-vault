@@ -358,6 +358,109 @@ class GalleryRepository {
     );
   }
 
+  Future<void> deletePhoto(int photoId) async {
+    await init();
+    final db = await database;
+    await db.delete('photos', where: 'id = ?', whereArgs: [photoId]);
+  }
+
+  Future<void> deletePhotos(Iterable<int> photoIds) async {
+    final ids = photoIds.toList();
+    if (ids.isEmpty) return;
+
+    await init();
+    final db = await database;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await db.delete('photos', where: 'id IN ($placeholders)', whereArgs: ids);
+  }
+
+  Future<List<AlbumPhoto>> searchPhotos(String query) async {
+    await init();
+    final db = await database;
+    final like = '%$query%';
+    final rows = await db.query(
+      'photos',
+      where: 'title LIKE ? OR date LIKE ?',
+      whereArgs: [like, like],
+      orderBy: 'id ASC',
+    );
+    return rows.map(_toAlbumPhoto).toList();
+  }
+
+  Future<List<Album>> searchAlbums(String query) async {
+    await init();
+    final db = await database;
+    final like = '%$query%';
+    final albumRows = await db.query(
+      'albums',
+      where: 'name LIKE ? OR category LIKE ?',
+      whereArgs: [like, like],
+      orderBy: 'sort_order ASC',
+    );
+    final albums = <Album>[];
+
+    for (final row in albumRows) {
+      final albumId = row['id'] as String;
+      final count =
+          Sqflite.firstIntValue(
+            await db.rawQuery(
+              'SELECT COUNT(*) FROM photos WHERE album_id = ?',
+              [albumId],
+            ),
+          ) ??
+          0;
+
+      albums.add(
+        Album(
+          id: albumId,
+          name: row['name'] as String,
+          category: row['category'] as String,
+          dateLabel: row['date_label'] as String,
+          coverPhotoId: row['cover_photo_id'] as int?,
+          photoCount: count,
+          isLocked: (row['is_locked'] as int) == 1,
+          isFavorite: (row['is_favorite'] as int) == 1,
+        ),
+      );
+    }
+
+    return albums;
+  }
+
+  Future<String> createAlbum({
+    required String name,
+    required String category,
+  }) async {
+    await init();
+    final db = await database;
+    final id = 'album_${DateTime.now().millisecondsSinceEpoch}';
+    await db.insert('albums', {
+      'id': id,
+      'name': name,
+      'category': category,
+      'date_label': 'اليوم',
+      'is_locked': 0,
+      'is_favorite': 0,
+      'sort_order': _albumSeeds.length,
+    });
+    return id;
+  }
+
+  Future<void> movePhotosToAlbum(Iterable<int> photoIds, String albumId) async {
+    final ids = photoIds.toList();
+    if (ids.isEmpty) return;
+
+    await init();
+    final db = await database;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await db.update(
+      'photos',
+      {'album_id': albumId},
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+  }
+
   AlbumPhoto _toAlbumPhoto(Map<String, Object?> row) {
     return AlbumPhoto(
       id: row['id'] as int,

@@ -22,6 +22,7 @@ class AlbumScreen extends StatefulWidget {
 
 class _AlbumScreenState extends State<AlbumScreen> {
   List<AlbumPhoto> _photos = [];
+  List<AlbumPhoto> _displayedPhotos = [];
   Set<int> _favoriteIds = {};
   bool _loading = true;
   bool _favoritesOnly = false;
@@ -43,6 +44,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
       if (!mounted) return;
       setState(() {
         _photos = photos;
+        _displayedPhotos = photos;
         _favoriteIds = photos
             .where((photo) => photo.isFavorite)
             .map((photo) => photo.id)
@@ -56,8 +58,90 @@ class _AlbumScreenState extends State<AlbumScreen> {
   }
 
   List<AlbumPhoto> get _visiblePhotos {
-    if (!_favoritesOnly) return _photos;
-    return _photos.where((photo) => _favoriteIds.contains(photo.id)).toList();
+    var result = _displayedPhotos;
+    if (!_favoritesOnly) {
+      return result;
+    }
+    return result.where((photo) => _favoriteIds.contains(photo.id)).toList();
+  }
+
+  void _openSearch() {
+    showSearch(
+      context: context,
+      delegate: _AlbumPhotoSearchDelegate(
+        albumName: album.name,
+        onResult: (query) {
+          setState(() {
+            final q = query.toLowerCase();
+            _displayedPhotos = _photos
+                .where(
+                  (p) =>
+                      p.title.toLowerCase().contains(q) ||
+                      p.date.toLowerCase().contains(q),
+                )
+                .toList();
+          });
+        },
+        onClear: () {
+          setState(() {
+            _displayedPhotos = _photos;
+          });
+        },
+      ),
+    );
+  }
+
+  void _showMoreSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.refresh,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('تحديث الألبوم'),
+              onTap: () {
+                Navigator.pop(context);
+                _load();
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.info_outline,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('عن الألبوم'),
+              onTap: () {
+                Navigator.pop(context);
+                showAppToast(
+                  context,
+                  '${album.name} • ${album.photoCount} صورة',
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _openViewer(int index) async {
@@ -104,12 +188,12 @@ class _AlbumScreenState extends State<AlbumScreen> {
           children: [
             AppHeader(
               title: album.name,
-              subtitle: '${album.photoCount} صورة • ${album.dateLabel}',
+              subtitle: '${_displayedPhotos.length} صورة • ${album.dateLabel}',
               leading: HeaderBackButton(
                 onTap: () => Navigator.of(context).pop(),
               ),
-              onSearch: () => showAppToast(context, 'البحث داخل الألبوم'),
-              onMore: () => showAppToast(context, 'خيارات الألبوم'),
+              onSearch: _openSearch,
+              onMore: _showMoreSheet,
             ),
             Expanded(
               child: CustomScrollView(
@@ -491,5 +575,50 @@ class _EmptyAlbumFavorites extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _AlbumPhotoSearchDelegate extends SearchDelegate<String> {
+  final String albumName;
+  final ValueChanged<String> onResult;
+  final VoidCallback onClear;
+
+  _AlbumPhotoSearchDelegate({
+    required this.albumName,
+    required this.onResult,
+    required this.onClear,
+  });
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          onClear();
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    onResult(query);
+    close(context, query);
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return Center(child: Text('ابحث في $albumName'));
   }
 }

@@ -83,12 +83,13 @@ class AppBottomNav extends StatelessWidget {
                                   item.$3,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.labelMonoSmall(
-                                    AppColors.onPrimary,
-                                  ).copyWith(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style:
+                                      AppTextStyles.labelMonoSmall(
+                                        AppColors.onPrimary,
+                                      ).copyWith(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                 ),
                               ),
                             ],

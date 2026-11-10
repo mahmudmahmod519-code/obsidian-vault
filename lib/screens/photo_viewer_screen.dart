@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/gallery_repository.dart';
 import '../models/viewer_photo.dart';
@@ -127,6 +130,135 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     });
 
     _showToast(next ? 'Marked as Favorite' : 'Removed from Favorites');
+  }
+
+  Future<void> _shareCurrent() async {
+    final photo = _photos[_currentIndex];
+    final bytes = await GalleryRepository.instance.loadImage(photo.photoId);
+    if (bytes == null || bytes.isEmpty) {
+      if (mounted) _showToast('لا يمكن مشاركة الصورة');
+      return;
+    }
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/obsidian_${photo.photoId}.jpg');
+    await file.writeAsBytes(bytes);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'صورة من Obsidian Vault',
+        subject: 'Obsidian Vault',
+      ),
+    );
+    if (!mounted) return;
+    _showToast('تمت مشاركة الصورة');
+  }
+
+  Future<void> _deleteCurrent() async {
+    final photo = _photos[_currentIndex];
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        title: const Text('تأكيد الحذف'),
+        content: const Text(
+          'هل أنت متأكد أنك تريد حذف هذه الصورة؟ لا يمكن التراجع عن هذا الإجراء.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('حذف', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await GalleryRepository.instance.deletePhoto(photo.photoId);
+    _photos.removeAt(_currentIndex);
+    if (_photos.isEmpty) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    _currentIndex = _currentIndex.clamp(0, _photos.length - 1);
+    _pageController.jumpToPage(_currentIndex);
+    setState(() {});
+    _showToast('تم حذف الصورة');
+  }
+
+  void _showMoreSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.info_outline,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('معلومات الصورة'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _exifOpen = true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.refresh,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('تحديث العرض'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _transformController.value = Matrix4.identity();
+                  _zoom = 1.0;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTuneDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        title: const Text('تعديل الألوان'),
+        content: const Text(
+          'هذه النسخة مخصصة للاستخدام الشخصي. أدوات تعديل الألوان والفلاتر ستكون متاحة في التحديث القادم.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('تم'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showToast(String message) {
@@ -437,10 +569,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  _chromeCircleButton(
-                    Icons.more_vert,
-                    () => _showToast('Media telemetry settings'),
-                  ),
+                  _chromeCircleButton(Icons.more_vert, _showMoreSheet),
                 ],
               ),
             ],
@@ -605,24 +734,22 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                         _currentPhoto.isFavorite
                             ? AppColors.primaryContainer
                             : AppColors.secondary,
-                        () {
-                          _toggleFavorite();
-                        },
+                        _toggleFavorite,
                       ),
                       _dockButton(
                         Icons.tune,
                         AppColors.secondary,
-                        () => _showToast('Launching RAW color grading'),
+                        _showTuneDialog,
                       ),
                       _dockButton(
                         Icons.share,
                         AppColors.secondary,
-                        () => _showToast('Decrypted link generated'),
+                        _shareCurrent,
                       ),
                       _dockButton(
                         Icons.delete,
                         AppColors.secondary,
-                        () => _showToast('Archive marked for deletion'),
+                        _deleteCurrent,
                       ),
                     ],
                   ),

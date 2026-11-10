@@ -73,11 +73,7 @@ Widget _iconBox(
       color: AppColors.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(radius),
     ),
-    child: Icon(
-      icon,
-      size: iconSize,
-      color: iconColor ?? AppColors.onSurface,
-    ),
+    child: Icon(icon, size: iconSize, color: iconColor ?? AppColors.onSurface),
   );
 }
 
@@ -156,8 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SafeArea(
               child: Align(
-                alignment:
-                    isWide ? Alignment.center : Alignment.bottomCenter,
+                alignment: isWide ? Alignment.center : Alignment.bottomCenter,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: FadeTransition(
@@ -579,11 +574,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Text(
                   'مساحة التخزين المشفرة',
-                  style: _body(
-                    size: 12,
-                    weight: FontWeight.w500,
-                    height: 1.33,
-                  ),
+                  style: _body(size: 12, weight: FontWeight.w500, height: 1.33),
                 ),
               ),
               Text(
@@ -659,20 +650,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             'OBSIDIAN VAULT • v2.4.0 (BUILD 412)',
             textAlign: TextAlign.center,
-            style: _mono(
-              color: AppColors.onSurfaceVariant,
-              letterSpacing: 1.1,
-            ),
+            style: _mono(color: AppColors.onSurfaceVariant, letterSpacing: 1.1),
           ),
           const SizedBox(height: 4),
           Text(
             'جميع الحقوق محفوظة • حماية وتشفير عالي الأمان',
             textAlign: TextAlign.center,
-            style: _body(
-              size: 12,
-              color: AppColors.outline,
-              height: 1.33,
-            ),
+            style: _body(size: 12, color: AppColors.outline, height: 1.33),
           ),
         ],
       ),
@@ -755,11 +739,7 @@ class _SettingsToggleRow extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: _body(
-                    size: 16,
-                    weight: FontWeight.w500,
-                    height: 1.5,
-                  ),
+                  style: _body(size: 16, weight: FontWeight.w500, height: 1.5),
                 ),
                 Text(
                   subtitle,
@@ -865,13 +845,13 @@ class _VaultToggle extends StatelessWidget {
     final track = !enabled
         ? AppColors.primaryContainer.withValues(alpha: 0.6)
         : value
-            ? AppColors.primaryContainer
-            : AppColors.surfaceContainerHighest;
+        ? AppColors.primaryContainer
+        : AppColors.surfaceContainerHighest;
     final knob = !enabled
         ? AppColors.onPrimary.withValues(alpha: 0.9)
         : value
-            ? AppColors.onPrimary
-            : AppColors.secondary;
+        ? AppColors.onPrimary
+        : AppColors.secondary;
 
     return Semantics(
       toggled: value,

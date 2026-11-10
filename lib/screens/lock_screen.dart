@@ -28,15 +28,15 @@ class _LockScreenState extends State<LockScreen>
       vsync: this,
       duration: const Duration(milliseconds: 420),
     );
-    _shakeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: -14), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -14, end: 14), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 14, end: -10), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 10, end: 0), weight: 1),
-    ]).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.easeOut),
-    );
+    _shakeAnimation = TweenSequence<double>(
+      [
+        TweenSequenceItem(tween: Tween(begin: 0, end: -14), weight: 1),
+        TweenSequenceItem(tween: Tween(begin: -14, end: 14), weight: 2),
+        TweenSequenceItem(tween: Tween(begin: 14, end: -10), weight: 2),
+        TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
+        TweenSequenceItem(tween: Tween(begin: 10, end: 0), weight: 1),
+      ],
+    ).animate(CurvedAnimation(parent: _shakeController, curve: Curves.easeOut));
   }
 
   @override
@@ -139,7 +139,9 @@ class _LockScreenState extends State<LockScreen>
                 return SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
@@ -156,16 +158,19 @@ class _LockScreenState extends State<LockScreen>
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.primaryContainer
-                                    .withValues(alpha: 0.35),
+                                color: AppColors.primaryContainer.withValues(
+                                  alpha: 0.35,
+                                ),
                                 width: 1,
                               ),
-                              color: AppColors.surfaceContainerLow
-                                  .withValues(alpha: 0.7),
+                              color: AppColors.surfaceContainerLow.withValues(
+                                alpha: 0.7,
+                              ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primaryContainer
-                                      .withValues(alpha: 0.08),
+                                  color: AppColors.primaryContainer.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   blurRadius: 40,
                                   spreadRadius: 4,
                                 ),
@@ -178,10 +183,7 @@ class _LockScreenState extends State<LockScreen>
                             ),
                           ),
                           const SizedBox(height: 18),
-                          Text(
-                            'الخزنة',
-                            style: AppTextStyles.displayMobile(),
-                          ),
+                          Text('الخزنة', style: AppTextStyles.displayMobile()),
                           const SizedBox(height: 4),
                           Text(
                             'أدخل رمز PIN للوصول إلى صورك',
@@ -217,8 +219,8 @@ class _LockScreenState extends State<LockScreen>
                                       color: _error
                                           ? AppColors.error
                                           : filled
-                                              ? AppColors.primaryContainer
-                                              : AppColors.outlineVariant,
+                                          ? AppColors.primaryContainer
+                                          : AppColors.outlineVariant,
                                       width: 1.4,
                                     ),
                                     boxShadow: filled
@@ -308,8 +310,9 @@ class _VaultMark extends StatelessWidget {
         const SizedBox(width: 7),
         Text(
           'OBSIDIAN VAULT',
-          style: AppTextStyles.labelMonoSmall(AppColors.onSurfaceVariant)
-              .copyWith(letterSpacing: 3, fontSize: 10),
+          style: AppTextStyles.labelMonoSmall(
+            AppColors.onSurfaceVariant,
+          ).copyWith(letterSpacing: 3, fontSize: 10),
         ),
       ],
     );
@@ -332,11 +335,7 @@ class _Keypad extends StatelessWidget {
     final keys = <Widget>[
       for (var i = 1; i <= 9; i++)
         _KeypadButton(label: '$i', onTap: () => onDigit('$i')),
-      _KeypadButton(
-        icon: Icons.fingerprint,
-        gold: true,
-        onTap: onFingerprint,
-      ),
+      _KeypadButton(icon: Icons.fingerprint, gold: true, onTap: onFingerprint),
       _KeypadButton(label: '0', onTap: () => onDigit('0')),
       _KeypadButton(
         icon: Icons.backspace_outlined,
@@ -380,8 +379,8 @@ class _KeypadButton extends StatelessWidget {
     final color = gold
         ? AppColors.primaryContainer
         : muted
-            ? AppColors.onSurfaceVariant
-            : AppColors.onSurface;
+        ? AppColors.onSurfaceVariant
+        : AppColors.onSurface;
     return PressableScale(
       onTap: onTap,
       pressedScale: 0.92,

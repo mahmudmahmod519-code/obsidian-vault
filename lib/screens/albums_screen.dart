@@ -20,13 +20,28 @@ class AlbumsScreen extends StatefulWidget {
 
 class _AlbumsScreenState extends State<AlbumsScreen> {
   List<Album> _albums = [];
+  List<Album> _displayedAlbums = [];
   bool _loading = true;
   String? _error;
   String _category = 'الكل';
+  String _searchQuery = '';
 
-  List<Album> get _filtered => _category == 'الكل'
-      ? _albums
-      : _albums.where((a) => a.category == _category).toList();
+  List<Album> get _filtered {
+    var result = _category == 'الكل'
+        ? _displayedAlbums
+        : _displayedAlbums.where((a) => a.category == _category).toList();
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result
+          .where(
+            (a) =>
+                a.name.toLowerCase().contains(q) ||
+                a.category.toLowerCase().contains(q),
+          )
+          .toList();
+    }
+    return result;
+  }
 
   List<String> get _categories => [
     'الكل',
@@ -51,8 +66,10 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
       if (!mounted) return;
       setState(() {
         _albums = albums;
+        _displayedAlbums = albums;
         _loading = false;
         _error = null;
+        _searchQuery = '';
         if (_category != 'الكل' && !_categories.contains(_category)) {
           _category = 'الكل';
         }
@@ -64,6 +81,133 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
         _error = 'تعذر تحميل الألبومات';
       });
     }
+  }
+
+  void _openSearch() {
+    showSearch(
+      context: context,
+      delegate: _AlbumSearchDelegate(
+        onResult: (query) {
+          setState(() {
+            _searchQuery = query;
+          });
+        },
+        onClear: () {
+          setState(() {
+            _searchQuery = '';
+          });
+        },
+      ),
+    );
+  }
+
+  Future<void> _createAlbum() async {
+    final controller = TextEditingController();
+    final categoryController = TextEditingController(text: 'الكل');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        title: const Text('إنشاء ألبوم جديد'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'اسم الألبوم',
+                border: OutlineInputBorder(),
+              ),
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: categoryController,
+              decoration: const InputDecoration(
+                labelText: 'التصنيف',
+                border: OutlineInputBorder(),
+              ),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.pop(context, controller.text.trim());
+              }
+            },
+            child: const Text('إنشاء'),
+          ),
+        ],
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    await GalleryRepository.instance.createAlbum(
+      name: result,
+      category: categoryController.text.trim().isNotEmpty
+          ? categoryController.text.trim()
+          : 'الكل',
+    );
+    await _load();
+    if (mounted) showAppToast(context, 'تم إنشاء الألبوم');
+  }
+
+  void _showMoreSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.refresh,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('تحديث الألبومات'),
+              onTap: () {
+                Navigator.pop(context);
+                _load();
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.info_outline,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('عن التطبيق'),
+              onTap: () {
+                Navigator.pop(context);
+                showAppToast(context, 'Obsidian Vault - ألبومات خاصة');
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _openAlbum(Album album) async {
@@ -125,12 +269,12 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
               title: 'الألبومات',
               subtitle: _loading
                   ? 'جارٍ التحميل...'
-                  : '${_albums.length} ألبوم • $_totalPhotos صورة',
+                  : '${_displayedAlbums.length} ألبوم • $_totalPhotos صورة',
               leading: HeaderBackButton(
                 onTap: () => Navigator.of(context).pop(),
               ),
-              onSearch: () => showAppToast(context, 'البحث في الألبومات'),
-              onMore: () => showAppToast(context, 'خيارات الألبومات'),
+              onSearch: _openSearch,
+              onMore: _showMoreSheet,
             ),
             const SizedBox(height: 2),
             _CategoryFilters(
@@ -181,7 +325,32 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                       ),
                     )
                   : albums.isEmpty
-                  ? const _EmptyAlbums()
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.search_off,
+                            size: 48,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'لا توجد ألبومات',
+                            style: AppTextStyles.headlineSmall(),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? 'جرّب كلمة بحث أخرى'
+                                : 'ابدأ بإنشاء ألبوم جديد',
+                            style: AppTextStyles.bodySmall(
+                              AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
                   : GridView.builder(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
                       physics: const BouncingScrollPhysics(),
@@ -208,7 +377,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showAppToast(context, 'إنشاء ألبوم جديد'),
+        onPressed: _createAlbum,
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: AppColors.onPrimary,
         elevation: 4,
@@ -412,38 +581,42 @@ class _Badge extends StatelessWidget {
   }
 }
 
-class _EmptyAlbums extends StatelessWidget {
-  const _EmptyAlbums();
+class _AlbumSearchDelegate extends SearchDelegate<String> {
+  final ValueChanged<String> onResult;
+  final VoidCallback onClear;
+
+  _AlbumSearchDelegate({required this.onResult, required this.onClear});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.outlineVariant.withValues(alpha: 0.4),
-              ),
-            ),
-            child: const Icon(
-              Icons.photo_album_outlined,
-              size: 30,
-              color: AppColors.primaryContainer,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'لا توجد ألبومات في هذا التصنيف',
-            style: AppTextStyles.headlineSmall(),
-          ),
-        ],
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          onClear();
+        },
       ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
     );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    onResult(query);
+    close(context, query);
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const Center(child: Text('ابحث عن اسم الألبوم أو التصنيف'));
   }
 }

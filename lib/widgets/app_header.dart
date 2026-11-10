@@ -89,26 +89,18 @@ class AppHeader extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodySmall(
-                      AppColors.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles.bodySmall(AppColors.onSurfaceVariant),
                   ),
               ],
             ),
           ),
           if (onSearch != null) ...[
             const SizedBox(width: 6),
-            _HeaderAction(
-              icon: Icons.search,
-              onTap: onSearch!,
-            ),
+            _HeaderAction(icon: Icons.search, onTap: onSearch!),
           ],
           if (onMore != null) ...[
             const SizedBox(width: 6),
-            _HeaderAction(
-              icon: Icons.more_horiz,
-              onTap: onMore!,
-            ),
+            _HeaderAction(icon: Icons.more_horiz, onTap: onMore!),
           ],
         ],
       ),

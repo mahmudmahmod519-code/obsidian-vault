@@ -21,7 +21,9 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   List<AlbumPhoto> _favorites = [];
+  List<AlbumPhoto> _displayedFavorites = [];
   bool _loading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -35,12 +37,94 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       if (!mounted) return;
       setState(() {
         _favorites = favorites;
+        _displayedFavorites = favorites;
         _loading = false;
+        _searchQuery = '';
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
     }
+  }
+
+  void _openSearch() {
+    showSearch(
+      context: context,
+      delegate: _FavoritesSearchDelegate(
+        onResult: (query) {
+          setState(() {
+            _searchQuery = query;
+            final q = query.toLowerCase();
+            _displayedFavorites = _favorites
+                .where(
+                  (p) =>
+                      p.title.toLowerCase().contains(q) ||
+                      p.date.toLowerCase().contains(q),
+                )
+                .toList();
+          });
+        },
+        onClear: () {
+          setState(() {
+            _searchQuery = '';
+            _displayedFavorites = _favorites;
+          });
+        },
+      ),
+    );
+  }
+
+  void _showMoreSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.refresh,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('تحديث المفضلة'),
+              onTap: () {
+                Navigator.pop(context);
+                _load();
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.info_outline,
+                color: AppColors.primaryContainer,
+              ),
+              title: const Text('عن المفضلة'),
+              onTap: () {
+                Navigator.pop(context);
+                showAppToast(
+                  context,
+                  '${_displayedFavorites.length} صورة مفضلة',
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _openViewer(int index) async {
@@ -93,12 +177,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               title: 'المفضلة',
               subtitle: _loading
                   ? 'جارٍ التحميل...'
-                  : '${_favorites.length} صورة محفوظة',
+                  : '${_displayedFavorites.length} صورة محفوظة',
               leading: HeaderBackButton(
                 onTap: () => Navigator.of(context).pop(),
               ),
-              onSearch: () => showAppToast(context, 'البحث في المفضلة'),
-              onMore: () => showAppToast(context, 'خيارات المفضلة'),
+              onSearch: _openSearch,
+              onMore: _showMoreSheet,
             ),
             Expanded(
               child: _loading
@@ -107,8 +191,33 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         color: AppColors.primaryContainer,
                       ),
                     )
-                  : _favorites.isEmpty
-                  ? const _EmptyFavorites()
+                  : _displayedFavorites.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.search_off,
+                            size: 48,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'لا توجد نتائج',
+                            style: AppTextStyles.headlineSmall(),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? 'جرّب كلمة بحث أخرى'
+                                : 'لا توجد صور مفضلة',
+                            style: AppTextStyles.bodySmall(
+                              AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
                   : CustomScrollView(
                       physics: const BouncingScrollPhysics(),
                       slivers: [
@@ -132,7 +241,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 ),
                                 const Spacer(),
                                 Text(
-                                  'FAVORITES // ${_favorites.length}',
+                                  'FAVORITES // ${_displayedFavorites.length}',
                                   style: AppTextStyles.labelMonoSmall(
                                     AppColors.outline,
                                   ).copyWith(fontSize: 10),
@@ -154,7 +263,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               context,
                               index,
                             ) {
-                              final photo = _favorites[index];
+                              final photo = _displayedFavorites[index];
                               return PhotoTile(
                                 photoId: photo.id,
                                 favorite: true,
@@ -163,7 +272,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   _openViewer(index);
                                 },
                               );
-                            }, childCount: _favorites.length),
+                            }, childCount: _displayedFavorites.length),
                           ),
                         ),
                         const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -178,40 +287,42 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 }
 
-class _EmptyFavorites extends StatelessWidget {
-  const _EmptyFavorites();
+class _FavoritesSearchDelegate extends SearchDelegate<String> {
+  final ValueChanged<String> onResult;
+  final VoidCallback onClear;
+
+  _FavoritesSearchDelegate({required this.onResult, required this.onClear});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.outlineVariant.withValues(alpha: 0.4),
-              ),
-            ),
-            child: const Icon(
-              Icons.favorite_border,
-              size: 30,
-              color: AppColors.primaryContainer,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text('لا توجد صور مفضلة', style: AppTextStyles.headlineSmall()),
-          const SizedBox(height: 4),
-          Text(
-            'اضغط على القلب في أي صورة لإضافتها هنا',
-            style: AppTextStyles.bodySmall(AppColors.onSurfaceVariant),
-          ),
-        ],
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          onClear();
+        },
       ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
     );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    onResult(query);
+    close(context, query);
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const Center(child: Text('ابحث في الصور المفضلة'));
   }
 }
