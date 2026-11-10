@@ -33,6 +33,7 @@ class PhotoTile extends StatelessWidget {
             Image.asset(
               imageUrl,
               fit: BoxFit.cover,
+              cacheWidth: 720,
               errorBuilder: (_, __, ___) => Container(
                 color: AppColors.surfaceContainerLow,
                 alignment: Alignment.center,

@@ -10,7 +10,7 @@
 - شاشة ألبوم مع غلاف، تصفية المفضلة، تبديل شبكة 2/3 أعمدة، وعلامة نهاية الألبوم.
 - عارض صور متقدم: تكبير بالنقر المزدوج، سحب للأسفل للإغلاق، شريط EXIF، مفضلة، ومشاركة.
 - المفضلة، والإعدادات (الأمان، المظهر، الخصوصية، مساحة التخزين).
-- أوفلاين 100%: `assets/images` و`assets/fonts` محلية.
+- أوفلاين 100%: 62 صورة محلية داخل `assets/images` وكل الخطوط داخل `assets/fonts`.
 - GitHub Actions لبناء APK تلقائيًا ورفعه كـ Artifact، مع نشر Release عند إنشاء Tag.
 
 ## التشغيل
@@ -42,12 +42,12 @@ build/app/outputs/flutter-apk/app-release.apk
 
 - يعمل عند push إلى `main` أو `master`، أو عند فتح Pull Request، أو يدويًا من `workflow_dispatch`.
 - يبني `app-release.apk` ويرفعه كـ Artifact باسم `obsidian-vault-apk`.
-- عند push لـ tag يبدأ بـ `v` (مثل `v1.0.0`) يرفق الـ APK تلقائيًا في GitHub Release.
+- عند push لـ tag يبدأ بـ `v` (مثل `v1.0.1`) يرفق الـ APK تلقائيًا في GitHub Release.
 
 ## ملاحظات
 
 - الـ APK الحالي موقّع بمفتاح debug الافتراضي، وهو مناسب للاستخدام الشخصي والتثبيت المباشر، وليس للنشر على المتاجر.
-- لاستبدال الصور التجريبية بصورك: ضعها في `assets/images/` وحدّث المسارات في `lib/data/demo_data.dart`.
+- لإضافة صور جديدة: ضعها في `assets/images/` وأضف مسارها إلى قائمة `_imageAssets` في `lib/data/demo_data.dart`.
 - الخطوط: Space Grotesk، Noto Sans، Noto Sans Arabic، Space Mono.
 - بنية الكود: `lib/screens` للشاشات، `lib/widgets` للمكوّنات المشتركة، `lib/models` للنماذج، `lib/data` للبيانات التجريبية، `lib/theme.dart` للثيم.
 

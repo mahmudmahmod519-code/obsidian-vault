@@ -44,8 +44,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   void initState() {
     super.initState();
     _photos = List.of(widget.photos);
-    _currentIndex =
-        _photos.isEmpty ? 0 : widget.initialIndex.clamp(0, _photos.length - 1);
+    _currentIndex = _photos.isEmpty
+        ? 0
+        : widget.initialIndex.clamp(0, _photos.length - 1);
     _pageController = PageController(initialPage: _currentIndex);
     _transformController.addListener(_onTransformChanged);
   }
@@ -153,16 +154,18 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                     ? null
                     : (details) {
                         setState(() {
-                          _dragOffset =
-                              (_dragOffset + details.delta.dy).clamp(0.0, 300.0);
+                          _dragOffset = (_dragOffset + details.delta.dy).clamp(
+                            0.0,
+                            300.0,
+                          );
                         });
                       },
                 onVerticalDragCancel: _zoom > 1.01
                     ? null
                     : () => setState(() {
-                          _isDragging = false;
-                          _dragOffset = 0;
-                        }),
+                        _isDragging = false;
+                        _dragOffset = 0;
+                      }),
                 onVerticalDragEnd: _zoom > 1.01
                     ? null
                     : (_) {
@@ -212,9 +215,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                             panEnabled: index == _currentIndex && _zoom > 1.01,
                             minScale: 1,
                             maxScale: 4,
-                            child: Center(
-                              child: _buildImage(_photos[index]),
-                            ),
+                            child: Center(child: _buildImage(_photos[index])),
                           ),
                         );
                       },
@@ -292,6 +293,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         Image.asset(
           photo.imageUrl,
           fit: BoxFit.contain,
+          cacheWidth: 1800,
           errorBuilder: (_, __, ___) => const Center(
             child: Icon(
               Icons.broken_image,
@@ -344,8 +346,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow
-                          .withValues(alpha: 0.8),
+                      color: AppColors.surfaceContainerLow.withValues(
+                        alpha: 0.8,
+                      ),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Row(
@@ -378,8 +381,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                     Text(
                       '${(_currentIndex + 1).toString().padLeft(2, '0')} / ${_photos.length.toString().padLeft(2, '0')}',
                       style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                        fontFamily: 'SpaceMono',
+                        fontFamilyFallback: const ['NotoSansArabic'],
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.1,
@@ -389,8 +392,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                     Text(
                       _currentPhoto.timestamp,
                       style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                        fontFamily: 'SpaceMono',
+                        fontFamilyFallback: const ['NotoSansArabic'],
                         fontSize: 10,
                         letterSpacing: 0.08,
                         color: AppColors.onSurfaceVariant,
@@ -408,8 +411,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                       height: 32,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerLow
-                            .withValues(alpha: 0.8),
+                        color: AppColors.surfaceContainerLow.withValues(
+                          alpha: 0.8,
+                        ),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Row(
@@ -424,8 +428,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           Text(
                             '${_zoom.toStringAsFixed(1)}x',
                             style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                              fontFamily: 'SpaceMono',
+                              fontFamilyFallback: const ['NotoSansArabic'],
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: AppColors.onSurface,
@@ -502,11 +506,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [
-            Color(0xE6000000),
-            Color(0x80000000),
-            Colors.transparent,
-          ],
+          colors: [Color(0xE6000000), Color(0x80000000), Colors.transparent],
         ),
       ),
       child: Column(
@@ -776,8 +776,10 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                                 Text(
                                   'SHA-256 VAULT HASH',
                                   style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                                    fontFamily: 'SpaceMono',
+                                    fontFamilyFallback: const [
+                                      'NotoSansArabic',
+                                    ],
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.08,
@@ -795,8 +797,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                             SelectableText(
                               _currentPhoto.hash,
                               style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                                fontFamily: 'SpaceMono',
+                                fontFamilyFallback: const ['NotoSansArabic'],
                                 fontSize: 10,
                                 color: AppColors.onSurfaceVariant,
                               ),
@@ -804,9 +806,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           ],
                         ),
                       ),
-                      SizedBox(
-                        height: MediaQuery.of(context).padding.bottom,
-                      ),
+                      SizedBox(height: MediaQuery.of(context).padding.bottom),
                     ],
                   ),
                 ),
@@ -831,8 +831,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+              fontFamily: 'SpaceMono',
+              fontFamilyFallback: const ['NotoSansArabic'],
               fontSize: 10,
               color: AppColors.onSurfaceVariant,
             ),
@@ -844,8 +844,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             overflow: TextOverflow.ellipsis,
             style: mono
                 ? TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                    fontFamily: 'SpaceMono',
+                    fontFamilyFallback: const ['NotoSansArabic'],
                     fontSize: 14,
                     color: AppColors.primary,
                   )
@@ -895,8 +895,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                       Text(
                         _toastMessage.toUpperCase(),
                         style: TextStyle(
-                            fontFamily: 'SpaceMono',
-                            fontFamilyFallback: const ['NotoSansArabic'],
+                          fontFamily: 'SpaceMono',
+                          fontFamilyFallback: const ['NotoSansArabic'],
                           fontSize: 11,
                           letterSpacing: 0.08,
                           color: AppColors.primary,

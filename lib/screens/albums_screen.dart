@@ -65,9 +65,9 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
         );
         break;
       case 3:
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
         break;
     }
   }
@@ -101,8 +101,9 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                 children: [
                   Text(
                     'VAULT // ${albums.length} ALBUMS',
-                    style: AppTextStyles.labelMonoSmall(AppColors.outline)
-                        .copyWith(fontSize: 10),
+                    style: AppTextStyles.labelMonoSmall(
+                      AppColors.outline,
+                    ).copyWith(fontSize: 10),
                   ),
                   const Spacer(),
                   const Icon(
@@ -113,8 +114,9 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                   const SizedBox(width: 4),
                   Text(
                     '${albums.where((a) => a.isLocked).length} مقفلة',
-                    style: AppTextStyles.labelMonoSmall(AppColors.outline)
-                        .copyWith(fontSize: 10),
+                    style: AppTextStyles.labelMonoSmall(
+                      AppColors.outline,
+                    ).copyWith(fontSize: 10),
                   ),
                 ],
               ),
@@ -127,11 +129,11 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                       physics: const BouncingScrollPhysics(),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 0.82,
-                      ),
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 0.82,
+                          ),
                       itemCount: albums.length,
                       itemBuilder: (context, index) {
                         final album = albums[index];
@@ -226,6 +228,7 @@ class _AlbumCard extends StatelessWidget {
             Image.asset(
               album.coverImage,
               fit: BoxFit.cover,
+              cacheWidth: 900,
               errorBuilder: (_, __, ___) => Container(
                 color: AppColors.surfaceContainerLow,
                 alignment: Alignment.center,
@@ -378,8 +381,10 @@ class _EmptyAlbums extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Text('لا توجد ألبومات في هذا التصنيف',
-              style: AppTextStyles.headlineSmall()),
+          Text(
+            'لا توجد ألبومات في هذا التصنيف',
+            style: AppTextStyles.headlineSmall(),
+          ),
         ],
       ),
     );

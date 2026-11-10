@@ -44,10 +44,12 @@ class _AlbumScreenState extends State<AlbumScreen> {
     final photos = album.photos
         .asMap()
         .entries
-        .map((e) => ViewerPhoto.fromAlbumPhoto(
-              _asAlbumPhoto(e.key, e.value),
-              index: e.key,
-            ))
+        .map(
+          (e) => ViewerPhoto.fromAlbumPhoto(
+            _asAlbumPhoto(e.key, e.value),
+            index: e.key,
+          ),
+        )
         .toList();
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -105,15 +107,13 @@ class _AlbumScreenState extends State<AlbumScreen> {
                           _FilterChip(
                             label: 'الكل',
                             active: !_favoritesOnly,
-                            onTap: () =>
-                                setState(() => _favoritesOnly = false),
+                            onTap: () => setState(() => _favoritesOnly = false),
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
                             label: 'المفضلة',
                             active: _favoritesOnly,
-                            onTap: () =>
-                                setState(() => _favoritesOnly = true),
+                            onTap: () => setState(() => _favoritesOnly = true),
                           ),
                           const Spacer(),
                           _ViewToggle(
@@ -134,27 +134,21 @@ class _AlbumScreenState extends State<AlbumScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       sliver: SliverGrid(
-                        gridDelegate:
-                            SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: _crossAxisCount,
                           mainAxisSpacing: 2,
                           crossAxisSpacing: 2,
                         ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, i) {
-                            final entry = visible[i];
-                            return PhotoTile(
-                              imageUrl: entry.value,
-                              favorite:
-                                  _favoriteIndices.contains(entry.key),
-                              borderRadius: BorderRadius.circular(2),
-                              onTap: () => _openViewer(entry.key),
-                              onLongPress: () =>
-                                  _toggleFavorite(entry.key),
-                            );
-                          },
-                          childCount: visible.length,
-                        ),
+                        delegate: SliverChildBuilderDelegate((context, i) {
+                          final entry = visible[i];
+                          return PhotoTile(
+                            imageUrl: entry.value,
+                            favorite: _favoriteIndices.contains(entry.key),
+                            borderRadius: BorderRadius.circular(2),
+                            onTap: () => _openViewer(entry.key),
+                            onLongPress: () => _toggleFavorite(entry.key),
+                          );
+                        }, childCount: visible.length),
                       ),
                     ),
                   SliverToBoxAdapter(child: _buildEndMarker()),
@@ -180,6 +174,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
               Image.asset(
                 album.coverImage,
                 fit: BoxFit.cover,
+                cacheWidth: 1200,
                 errorBuilder: (_, __, ___) => Container(
                   color: AppColors.surfaceContainerLow,
                   alignment: Alignment.center,
@@ -209,8 +204,10 @@ class _AlbumScreenState extends State<AlbumScreen> {
                 top: 12,
                 right: 12,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.45),
                     borderRadius: BorderRadius.circular(999),
@@ -222,7 +219,9 @@ class _AlbumScreenState extends State<AlbumScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        album.isLocked ? Icons.lock : Icons.photo_album_outlined,
+                        album.isLocked
+                            ? Icons.lock
+                            : Icons.photo_album_outlined,
                         size: 12,
                         color: AppColors.primaryContainer,
                       ),
@@ -315,8 +314,9 @@ class _AlbumScreenState extends State<AlbumScreen> {
                 const SizedBox(height: 4),
                 Text(
                   'نهاية الألبوم • ${album.photoCount} صورة',
-                  style: AppTextStyles.labelMonoSmall(AppColors.outline)
-                      .copyWith(fontSize: 10),
+                  style: AppTextStyles.labelMonoSmall(
+                    AppColors.outline,
+                  ).copyWith(fontSize: 10),
                 ),
               ],
             ),
@@ -377,10 +377,7 @@ class _ViewToggle extends StatelessWidget {
   final int crossAxisCount;
   final ValueChanged<int> onChanged;
 
-  const _ViewToggle({
-    required this.crossAxisCount,
-    required this.onChanged,
-  });
+  const _ViewToggle({required this.crossAxisCount, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
