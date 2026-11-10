@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/demo_data.dart';
+import '../data/gallery_repository.dart';
 import '../models/album_photo.dart';
 import '../models/viewer_photo.dart';
 import '../theme.dart';
@@ -21,11 +21,42 @@ class HomeGalleryScreen extends StatefulWidget {
 }
 
 class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
-  final List<AlbumPhoto> _photos = List.of(demoPhotos);
+  List<AlbumPhoto> _photos = [];
   final Set<int> _selected = {};
   final ScrollController _scrollController = ScrollController();
+  bool _loading = true;
+  String? _error;
+  int _albumCount = 0;
 
   bool get _selectionMode => _selected.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      await GalleryRepository.instance.init();
+      final photos = await GalleryRepository.instance.getPhotos();
+      final albums = await GalleryRepository.instance.getAlbums();
+      if (!mounted) return;
+      setState(() {
+        _photos = photos;
+        _albumCount = albums.length;
+        _loading = false;
+        _error = null;
+        _selected.clear();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'تعذر تحميل الصور من قاعدة البيانات';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -63,13 +94,23 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
     _clearSelection();
   }
 
-  void _openViewer(int index) {
+  Future<void> _handleFavoriteSelection() async {
+    if (_selected.isEmpty) return;
+    final ids = _selected.map((index) => _photos[index].id).toList();
+    await GalleryRepository.instance.setFavorites(ids, true);
+    if (!mounted) return;
+    await _load();
+    if (!mounted) return;
+    showAppToast(context, 'تمت إضافة ${ids.length} إلى المفضلة');
+  }
+
+  Future<void> _openViewer(int index) async {
     final photos = _photos
         .asMap()
         .entries
         .map((e) => ViewerPhoto.fromAlbumPhoto(e.value, index: e.key))
         .toList();
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, __, ___) =>
@@ -78,6 +119,7 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
             FadeTransition(opacity: animation, child: child),
       ),
     );
+    if (mounted) _load();
   }
 
   void _push(Widget page) {
@@ -151,7 +193,9 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
                   : AppHeader(
                       key: const ValueKey('normal'),
                       title: 'الصور',
-                      subtitle: '${_photos.length} صورة • ${demoAlbums.length} ألبومات',
+                      subtitle: _loading
+                          ? 'جارٍ تحميل الصور...'
+                          : '${_photos.length} صورة • $_albumCount ألبومات',
                       onSearch: () => showAppToast(context, 'البحث قريبًا'),
                       onMore: () => showAppToast(context, 'خيارات إضافية'),
                     ),
@@ -163,7 +207,9 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
       bottomNavigationBar: _selectionMode
           ? _SelectionDock(
               onShare: () => _handleAction('تمت مشاركة'),
-              onFavorite: () => _handleAction('تمت إضافة'),
+              onFavorite: () {
+                _handleFavoriteSelection();
+              },
               onDelete: () => _handleAction('تم حذف'),
             )
           : AppBottomNav(selectedIndex: 0, onTap: _onNavTap),
@@ -171,6 +217,34 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
   }
 
   Widget _buildGallery() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryContainer),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _error!,
+              style: AppTextStyles.bodyMedium(AppColors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            TextButton(onPressed: _load, child: const Text('إعادة المحاولة')),
+          ],
+        ),
+      );
+    }
+
+    if (_photos.isEmpty) {
+      return Center(
+        child: Text('لا توجد صور', style: AppTextStyles.headlineSmall()),
+      );
+    }
+
     final groups = <String, List<MapEntry<int, AlbumPhoto>>>{};
     for (final entry in _photos.asMap().entries) {
       groups.putIfAbsent(entry.value.date, () => []).add(entry);
@@ -183,10 +257,7 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
         const SliverToBoxAdapter(child: SizedBox(height: 4)),
         for (final group in groups.entries) ...[
           SliverToBoxAdapter(
-            child: _SectionTitle(
-              title: group.key,
-              count: group.value.length,
-            ),
+            child: _SectionTitle(title: group.key, count: group.value.length),
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -196,26 +267,23 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
                 mainAxisSpacing: 2,
                 crossAxisSpacing: 2,
               ),
-              delegate: SliverChildBuilderDelegate(
-                (context, i) {
-                  final entry = group.value[i];
-                  return PhotoTile(
-                    imageUrl: entry.value.imageUrl,
-                    favorite: entry.value.isFavorite,
-                    selected: _selected.contains(entry.key),
-                    borderRadius: BorderRadius.circular(2),
-                    onTap: () {
-                      if (_selectionMode) {
-                        _toggleSelect(entry.key);
-                      } else {
-                        _openViewer(entry.key);
-                      }
-                    },
-                    onLongPress: () => _startSelection(entry.key),
-                  );
-                },
-                childCount: group.value.length,
-              ),
+              delegate: SliverChildBuilderDelegate((context, i) {
+                final entry = group.value[i];
+                return PhotoTile(
+                  photoId: entry.value.id,
+                  favorite: entry.value.isFavorite,
+                  selected: _selected.contains(entry.key),
+                  borderRadius: BorderRadius.circular(2),
+                  onTap: () {
+                    if (_selectionMode) {
+                      _toggleSelect(entry.key);
+                    } else {
+                      _openViewer(entry.key);
+                    }
+                  },
+                  onLongPress: () => _startSelection(entry.key),
+                );
+              }, childCount: group.value.length),
             ),
           ),
         ],
@@ -250,8 +318,9 @@ class _SectionTitle extends StatelessWidget {
           const Spacer(),
           Text(
             '$count صور',
-            style: AppTextStyles.labelMonoSmall(AppColors.outline)
-                .copyWith(fontSize: 10),
+            style: AppTextStyles.labelMonoSmall(
+              AppColors.outline,
+            ).copyWith(fontSize: 10),
           ),
         ],
       ),
@@ -393,8 +462,9 @@ class _DockAction extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               label,
-              style: AppTextStyles.labelMonoSmall(effective)
-                  .copyWith(fontSize: 11),
+              style: AppTextStyles.labelMonoSmall(
+                effective,
+              ).copyWith(fontSize: 11),
             ),
           ],
         ),

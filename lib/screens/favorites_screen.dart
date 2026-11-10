@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/demo_data.dart';
+import '../data/gallery_repository.dart';
 import '../models/album_photo.dart';
 import '../models/viewer_photo.dart';
 import '../theme.dart';
@@ -20,16 +20,36 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  final List<AlbumPhoto> _favorites =
-      demoPhotos.where((p) => p.isFavorite).toList();
+  List<AlbumPhoto> _favorites = [];
+  bool _loading = true;
 
-  void _openViewer(int index) {
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final favorites = await GalleryRepository.instance.getFavorites();
+      if (!mounted) return;
+      setState(() {
+        _favorites = favorites;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openViewer(int index) async {
     final photos = _favorites
         .asMap()
         .entries
         .map((e) => ViewerPhoto.fromAlbumPhoto(e.value, index: e.key))
         .toList();
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, __, ___) =>
@@ -38,6 +58,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             FadeTransition(opacity: animation, child: child),
       ),
     );
+    if (mounted) _load();
   }
 
   void _onNavTap(int index) {
@@ -53,9 +74,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       case 2:
         break;
       case 3:
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
         break;
     }
   }
@@ -70,7 +91,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           children: [
             AppHeader(
               title: 'المفضلة',
-              subtitle: '${_favorites.length} صورة محفوظة',
+              subtitle: _loading
+                  ? 'جارٍ التحميل...'
+                  : '${_favorites.length} صورة محفوظة',
               leading: HeaderBackButton(
                 onTap: () => Navigator.of(context).pop(),
               ),
@@ -78,7 +101,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               onMore: () => showAppToast(context, 'خيارات المفضلة'),
             ),
             Expanded(
-              child: _favorites.isEmpty
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryContainer,
+                      ),
+                    )
+                  : _favorites.isEmpty
                   ? const _EmptyFavorites()
                   : CustomScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -117,27 +146,27 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           sliver: SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              mainAxisSpacing: 2,
-                              crossAxisSpacing: 2,
-                            ),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final photo = _favorites[index];
-                                return PhotoTile(
-                                  imageUrl: photo.imageUrl,
-                                  favorite: true,
-                                  borderRadius: BorderRadius.circular(2),
-                                  onTap: () => _openViewer(index),
-                                );
-                              },
-                              childCount: _favorites.length,
-                            ),
+                                  crossAxisCount: 3,
+                                  mainAxisSpacing: 2,
+                                  crossAxisSpacing: 2,
+                                ),
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final photo = _favorites[index];
+                              return PhotoTile(
+                                photoId: photo.id,
+                                favorite: true,
+                                borderRadius: BorderRadius.circular(2),
+                                onTap: () {
+                                  _openViewer(index);
+                                },
+                              );
+                            }, childCount: _favorites.length),
                           ),
                         ),
-                        const SliverToBoxAdapter(
-                          child: SizedBox(height: 24),
-                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 24)),
                       ],
                     ),
             ),

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/gallery_repository.dart';
 import 'screens/lock_screen.dart';
 import 'theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -20,6 +21,13 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
+
+  try {
+    await GalleryRepository.instance.init();
+  } catch (error, stackTrace) {
+    debugPrint('Gallery database initialization failed: $error\n$stackTrace');
+  }
+
   runApp(const ObsidianVaultApp());
 }
 
@@ -33,10 +41,7 @@ class ObsidianVaultApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       locale: const Locale('ar'),
-      supportedLocales: const [
-        Locale('ar'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

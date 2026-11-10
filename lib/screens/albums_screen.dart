@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../data/demo_data.dart';
+import '../data/gallery_repository.dart';
 import '../models/album.dart';
 import '../theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/db_image.dart';
 import 'album_screen.dart';
 import 'favorites_screen.dart';
 import 'settings_screen.dart';
@@ -18,17 +19,55 @@ class AlbumsScreen extends StatefulWidget {
 }
 
 class _AlbumsScreenState extends State<AlbumsScreen> {
+  List<Album> _albums = [];
+  bool _loading = true;
+  String? _error;
   String _category = 'الكل';
 
   List<Album> get _filtered => _category == 'الكل'
-      ? demoAlbums
-      : demoAlbums.where((a) => a.category == _category).toList();
+      ? _albums
+      : _albums.where((a) => a.category == _category).toList();
+
+  List<String> get _categories => [
+    'الكل',
+    ..._albums
+        .map((album) => album.category)
+        .where((category) => category != 'الكل')
+        .toSet(),
+  ];
 
   int get _totalPhotos =>
-      demoAlbums.fold(0, (sum, album) => sum + album.photoCount);
+      _albums.fold(0, (sum, album) => sum + album.photoCount);
 
-  void _openAlbum(Album album) {
-    Navigator.of(context).push(
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final albums = await GalleryRepository.instance.getAlbums();
+      if (!mounted) return;
+      setState(() {
+        _albums = albums;
+        _loading = false;
+        _error = null;
+        if (_category != 'الكل' && !_categories.contains(_category)) {
+          _category = 'الكل';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'تعذر تحميل الألبومات';
+      });
+    }
+  }
+
+  Future<void> _openAlbum(Album album) async {
+    await Navigator.of(context).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, __, ___) => AlbumScreen(album: album),
@@ -50,6 +89,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
         },
       ),
     );
+    if (mounted) _load();
   }
 
   void _onNavTap(int index) {
@@ -83,7 +123,9 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
           children: [
             AppHeader(
               title: 'الألبومات',
-              subtitle: '${demoAlbums.length} ألبوم • $_totalPhotos صورة',
+              subtitle: _loading
+                  ? 'جارٍ التحميل...'
+                  : '${_albums.length} ألبوم • $_totalPhotos صورة',
               leading: HeaderBackButton(
                 onTap: () => Navigator.of(context).pop(),
               ),
@@ -92,6 +134,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
             ),
             const SizedBox(height: 2),
             _CategoryFilters(
+              categories: _categories,
               selected: _category,
               onSelected: (category) => setState(() => _category = category),
             ),
@@ -122,7 +165,22 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
               ),
             ),
             Expanded(
-              child: albums.isEmpty
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryContainer,
+                      ),
+                    )
+                  : _error != null
+                  ? Center(
+                      child: Text(
+                        _error!,
+                        style: AppTextStyles.bodyMedium(
+                          AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : albums.isEmpty
                   ? const _EmptyAlbums()
                   : GridView.builder(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
@@ -139,7 +197,9 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                         final album = albums[index];
                         return _AlbumCard(
                           album: album,
-                          onTap: () => _openAlbum(album),
+                          onTap: () {
+                            _openAlbum(album);
+                          },
                         );
                       },
                     ),
@@ -161,10 +221,15 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
 }
 
 class _CategoryFilters extends StatelessWidget {
+  final List<String> categories;
   final String selected;
   final ValueChanged<String> onSelected;
 
-  const _CategoryFilters({required this.selected, required this.onSelected});
+  const _CategoryFilters({
+    required this.categories,
+    required this.selected,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -174,10 +239,10 @@ class _CategoryFilters extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         physics: const BouncingScrollPhysics(),
-        itemCount: albumCategories.length,
+        itemCount: categories.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final category = albumCategories[index];
+          final category = categories[index];
           final active = category == selected;
           return GestureDetector(
             onTap: () => onSelected(category),
@@ -225,18 +290,10 @@ class _AlbumCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              album.coverImage,
+            DbImage(
+              photoId: album.coverPhotoId,
               fit: BoxFit.cover,
               cacheWidth: 900,
-              errorBuilder: (_, __, ___) => Container(
-                color: AppColors.surfaceContainerLow,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.broken_image_outlined,
-                  color: AppColors.outline,
-                ),
-              ),
             ),
             Positioned.fill(
               child: DecoratedBox(

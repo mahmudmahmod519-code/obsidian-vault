@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../data/gallery_repository.dart';
 import '../models/album.dart';
 import '../models/album_photo.dart';
 import '../models/viewer_photo.dart';
 import '../theme.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/db_image.dart';
 import '../widgets/photo_tile.dart';
 import 'photo_viewer_screen.dart';
 
@@ -19,39 +21,53 @@ class AlbumScreen extends StatefulWidget {
 }
 
 class _AlbumScreenState extends State<AlbumScreen> {
+  List<AlbumPhoto> _photos = [];
+  Set<int> _favoriteIds = {};
+  bool _loading = true;
   bool _favoritesOnly = false;
   int _crossAxisCount = 3;
-  final Set<int> _favoriteIndices = {0, 2};
 
   Album get album => widget.album;
 
-  List<MapEntry<int, String>> get _visiblePhotos {
-    final entries = album.photos.asMap().entries.toList();
-    if (!_favoritesOnly) return entries;
-    return entries.where((e) => _favoriteIndices.contains(e.key)).toList();
+  @override
+  void initState() {
+    super.initState();
+    _load();
   }
 
-  AlbumPhoto _asAlbumPhoto(int index, String url) {
-    return AlbumPhoto(
-      imageUrl: url,
-      title: '${album.name} ${index + 1}',
-      date: album.dateLabel,
-      isFavorite: _favoriteIndices.contains(index),
-    );
+  Future<void> _load() async {
+    try {
+      final photos = await GalleryRepository.instance.getPhotosForAlbum(
+        album.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _photos = photos;
+        _favoriteIds = photos
+            .where((photo) => photo.isFavorite)
+            .map((photo) => photo.id)
+            .toSet();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
-  void _openViewer(int index) {
-    final photos = album.photos
+  List<AlbumPhoto> get _visiblePhotos {
+    if (!_favoritesOnly) return _photos;
+    return _photos.where((photo) => _favoriteIds.contains(photo.id)).toList();
+  }
+
+  Future<void> _openViewer(int index) async {
+    if (_photos.isEmpty) return;
+    final photos = _photos
         .asMap()
         .entries
-        .map(
-          (e) => ViewerPhoto.fromAlbumPhoto(
-            _asAlbumPhoto(e.key, e.value),
-            index: e.key,
-          ),
-        )
+        .map((e) => ViewerPhoto.fromAlbumPhoto(e.value, index: e.key))
         .toList();
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, __, ___) =>
@@ -60,20 +76,21 @@ class _AlbumScreenState extends State<AlbumScreen> {
             FadeTransition(opacity: animation, child: child),
       ),
     );
+    if (mounted) _load();
   }
 
-  void _toggleFavorite(int index) {
+  Future<void> _toggleFavorite(AlbumPhoto photo) async {
+    final next = !_favoriteIds.contains(photo.id);
+    await GalleryRepository.instance.setFavorite(photo.id, next);
+    if (!mounted) return;
     setState(() {
-      if (!_favoriteIndices.add(index)) {
-        _favoriteIndices.remove(index);
+      if (next) {
+        _favoriteIds.add(photo.id);
+      } else {
+        _favoriteIds.remove(photo.id);
       }
     });
-    showAppToast(
-      context,
-      _favoriteIndices.contains(index)
-          ? 'أضيفت إلى المفضلة'
-          : 'أزيلت من المفضلة',
-    );
+    showAppToast(context, next ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة');
   }
 
   @override
@@ -125,7 +142,16 @@ class _AlbumScreenState extends State<AlbumScreen> {
                       ),
                     ),
                   ),
-                  if (visible.isEmpty)
+                  if (_loading)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryContainer,
+                        ),
+                      ),
+                    )
+                  else if (visible.isEmpty)
                     const SliverFillRemaining(
                       hasScrollBody: false,
                       child: _EmptyAlbumFavorites(),
@@ -140,13 +166,20 @@ class _AlbumScreenState extends State<AlbumScreen> {
                           crossAxisSpacing: 2,
                         ),
                         delegate: SliverChildBuilderDelegate((context, i) {
-                          final entry = visible[i];
+                          final photo = visible[i];
+                          final photoIndex = _photos.indexWhere(
+                            (item) => item.id == photo.id,
+                          );
                           return PhotoTile(
-                            imageUrl: entry.value,
-                            favorite: _favoriteIndices.contains(entry.key),
+                            photoId: photo.id,
+                            favorite: _favoriteIds.contains(photo.id),
                             borderRadius: BorderRadius.circular(2),
-                            onTap: () => _openViewer(entry.key),
-                            onLongPress: () => _toggleFavorite(entry.key),
+                            onTap: () {
+                              _openViewer(photoIndex < 0 ? 0 : photoIndex);
+                            },
+                            onLongPress: () {
+                              _toggleFavorite(photo);
+                            },
                           );
                         }, childCount: visible.length),
                       ),
@@ -171,18 +204,10 @@ class _AlbumScreenState extends State<AlbumScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset(
-                album.coverImage,
+              DbImage(
+                photoId: album.coverPhotoId,
                 fit: BoxFit.cover,
                 cacheWidth: 1200,
-                errorBuilder: (_, __, ___) => Container(
-                  color: AppColors.surfaceContainerLow,
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.broken_image_outlined,
-                    color: AppColors.outline,
-                  ),
-                ),
               ),
               Positioned.fill(
                 child: DecoratedBox(
@@ -266,7 +291,9 @@ class _AlbumScreenState extends State<AlbumScreen> {
                     ),
                     const SizedBox(width: 10),
                     GestureDetector(
-                      onTap: () => _openViewer(0),
+                      onTap: () {
+                        _openViewer(0);
+                      },
                       child: Container(
                         width: 44,
                         height: 44,

@@ -1,8 +1,8 @@
 class Album {
   final String id;
   final String name;
-  final String coverImage;
-  final List<String> photos;
+  final int? coverPhotoId;
+  final int photoCount;
   final String category;
   final String dateLabel;
   final bool isLocked;
@@ -11,13 +11,11 @@ class Album {
   const Album({
     required this.id,
     required this.name,
-    required this.coverImage,
-    required this.photos,
+    required this.coverPhotoId,
+    required this.photoCount,
     this.category = 'الكل',
     this.dateLabel = '',
     this.isLocked = false,
     this.isFavorite = false,
   });
-
-  int get photoCount => photos.length;
 }

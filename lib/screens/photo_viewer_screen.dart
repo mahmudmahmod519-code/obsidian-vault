@@ -3,8 +3,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../data/gallery_repository.dart';
 import '../models/viewer_photo.dart';
 import '../theme.dart';
+import '../widgets/db_image.dart';
 
 class PhotoViewerScreen extends StatefulWidget {
   final List<ViewerPhoto> photos;
@@ -107,18 +109,24 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     setState(() => _chromeVisible = !_chromeVisible);
   }
 
-  void _toggleFavorite() {
+  Future<void> _toggleFavorite() async {
+    final index = _currentIndex;
+    final photo = _photos[index];
+    final next = !photo.isFavorite;
+
+    try {
+      await GalleryRepository.instance.setFavorite(photo.photoId, next);
+    } catch (_) {
+      if (mounted) _showToast('Could not update favorite');
+      return;
+    }
+
+    if (!mounted) return;
     setState(() {
-      _photos[_currentIndex] = _photos[_currentIndex].copyWith(
-        isFavorite: !_photos[_currentIndex].isFavorite,
-      );
+      _photos[index] = photo.copyWith(isFavorite: next);
     });
 
-    _showToast(
-      _photos[_currentIndex].isFavorite
-          ? 'Marked as Favorite'
-          : 'Removed from Favorites',
-    );
+    _showToast(next ? 'Marked as Favorite' : 'Removed from Favorites');
   }
 
   void _showToast(String message) {
@@ -290,18 +298,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             ],
           ),
         ),
-        Image.asset(
-          photo.imageUrl,
-          fit: BoxFit.contain,
-          cacheWidth: 1800,
-          errorBuilder: (_, __, ___) => const Center(
-            child: Icon(
-              Icons.broken_image,
-              size: 48,
-              color: AppColors.secondary,
-            ),
-          ),
-        ),
+        DbImage(photoId: photo.photoId, fit: BoxFit.contain, cacheWidth: 1800),
       ],
     );
   }
@@ -608,7 +605,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                         _currentPhoto.isFavorite
                             ? AppColors.primaryContainer
                             : AppColors.secondary,
-                        _toggleFavorite,
+                        () {
+                          _toggleFavorite();
+                        },
                       ),
                       _dockButton(
                         Icons.tune,

@@ -1,7 +1,7 @@
 import 'album_photo.dart';
 
 class ViewerPhoto {
-  final String imageUrl;
+  final int photoId;
   final String exif;
   final String timestamp;
   final String shutterAperture;
@@ -12,7 +12,7 @@ class ViewerPhoto {
   final bool isFavorite;
 
   const ViewerPhoto({
-    required this.imageUrl,
+    required this.photoId,
     required this.exif,
     required this.timestamp,
     required this.shutterAperture,
@@ -25,7 +25,7 @@ class ViewerPhoto {
 
   ViewerPhoto copyWith({bool? isFavorite}) {
     return ViewerPhoto(
-      imageUrl: imageUrl,
+      photoId: photoId,
       exif: exif,
       timestamp: timestamp,
       shutterAperture: shutterAperture,
@@ -77,7 +77,7 @@ class ViewerPhoto {
 
     final i = index % exifs.length;
     return ViewerPhoto(
-      imageUrl: photo.imageUrl,
+      photoId: photo.id,
       exif: exifs[i],
       timestamp: '02:44:${(19 + index).toString().padLeft(2, '0')} UTC',
       shutterAperture: apertures[i],

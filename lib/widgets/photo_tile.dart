@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'db_image.dart';
 
 class PhotoTile extends StatelessWidget {
-  final String imageUrl;
+  final int photoId;
   final bool selected;
   final bool favorite;
   final VoidCallback? onTap;
@@ -12,7 +13,7 @@ class PhotoTile extends StatelessWidget {
 
   const PhotoTile({
     super.key,
-    required this.imageUrl,
+    required this.photoId,
     this.selected = false,
     this.favorite = false,
     this.onTap,
@@ -30,20 +31,7 @@ class PhotoTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              imageUrl,
-              fit: BoxFit.cover,
-              cacheWidth: 720,
-              errorBuilder: (_, __, ___) => Container(
-                color: AppColors.surfaceContainerLow,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.broken_image_outlined,
-                  size: 22,
-                  color: AppColors.outline,
-                ),
-              ),
-            ),
+            DbImage(photoId: photoId, fit: BoxFit.cover, cacheWidth: 600),
             if (favorite && !selected)
               Positioned(
                 bottom: 6,
