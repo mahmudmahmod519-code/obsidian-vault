@@ -10,6 +10,8 @@ class ViewerPhoto {
   final String resolution;
   final String hash;
   final bool isFavorite;
+  final String? note;
+  final String? assetPath;
 
   const ViewerPhoto({
     required this.photoId,
@@ -21,9 +23,11 @@ class ViewerPhoto {
     required this.resolution,
     required this.hash,
     this.isFavorite = false,
+    this.note,
+    this.assetPath,
   });
 
-  ViewerPhoto copyWith({bool? isFavorite}) {
+  ViewerPhoto copyWith({bool? isFavorite, String? note}) {
     return ViewerPhoto(
       photoId: photoId,
       exif: exif,
@@ -34,6 +38,8 @@ class ViewerPhoto {
       resolution: resolution,
       hash: hash,
       isFavorite: isFavorite ?? this.isFavorite,
+      note: note ?? this.note,
+      assetPath: assetPath,
     );
   }
 
@@ -42,7 +48,7 @@ class ViewerPhoto {
       'ISO 100 • 24mm • f/1.8 • 1/2000s • 48MP RAW',
       'ISO 64 • 90mm • f/2.8 • 1/250s • 60MP DNG',
       'ISO 3200 • 14mm • f/1.4 • 25s • 50MP RAW',
-      'ISO 200 • 35mm • f/2.0 • 1/500s • 42MP RAW',
+      'ISO 200 • 35mm • f/2.0 • 42MP RAW',
     ];
     const apertures = [
       '1/2000s • f/1.8',
@@ -76,6 +82,7 @@ class ViewerPhoto {
     ];
 
     final i = index % exifs.length;
+
     return ViewerPhoto(
       photoId: photo.id,
       exif: exifs[i],
@@ -86,6 +93,8 @@ class ViewerPhoto {
       resolution: resolutions[i],
       hash: hashes[i],
       isFavorite: photo.isFavorite,
+      note: photo.note,
+      assetPath: photo.assetPath,
     );
   }
 }

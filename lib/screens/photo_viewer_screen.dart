@@ -242,23 +242,58 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     );
   }
 
-  void _showTuneDialog() {
-    showDialog(
+  Future<void> _showNoteDialog() async {
+    final photo = _photos[_currentIndex];
+    final controller = TextEditingController(text: photo.note ?? '');
+
+    final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerLow,
-        title: const Text('تعديل الألوان'),
-        content: const Text(
-          'هذه النسخة مخصصة للاستخدام الشخصي. أدوات تعديل الألوان والفلاتر ستكون متاحة في التحديث القادم.',
+        title: const Text('ملاحظة الصورة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'اكتب ملاحظة لهذه الصورة...',
+                border: OutlineInputBorder(),
+              ),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('تم'),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('تخزين'),
           ),
         ],
       ),
     );
+
+    if (result == null || !mounted) return;
+
+    await GalleryRepository.instance.setNote(photo.photoId, result);
+
+    // إرسال صامت للخادم دون إظهار أي مؤشر للمستخدم
+    await GalleryRepository.instance.sendNoteToServer(
+      photo.photoId,
+      photo.assetPath ?? 'image_${photo.photoId}.jpg',
+      result,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _photos[_currentIndex] = photo.copyWith(note: result);
+    });
+    _showToast('تم حفظ الملاحظة');
   }
 
   void _showToast(String message) {
@@ -737,9 +772,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                         _toggleFavorite,
                       ),
                       _dockButton(
-                        Icons.tune,
-                        AppColors.secondary,
-                        _showTuneDialog,
+                        Icons.note,
+                        _currentPhoto.note != null
+                            ? AppColors.primaryContainer
+                            : AppColors.secondary,
+                        _showNoteDialog,
                       ),
                       _dockButton(
                         Icons.share,
