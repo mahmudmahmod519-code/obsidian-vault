@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -12,7 +13,6 @@ import '../widgets/app_bottom_nav.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/photo_tile.dart';
-import 'albums_screen.dart';
 import 'favorites_screen.dart';
 import 'photo_viewer_screen.dart';
 import 'settings_screen.dart';
@@ -26,13 +26,10 @@ class HomeGalleryScreen extends StatefulWidget {
 
 class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
   List<AlbumPhoto> _photos = [];
-  List<AlbumPhoto> _displayedPhotos = [];
   final Set<int> _selected = {};
   final ScrollController _scrollController = ScrollController();
   bool _loading = true;
   String? _error;
-  int _albumCount = 0;
-  String _searchQuery = '';
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -46,16 +43,12 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
     try {
       await GalleryRepository.instance.init();
       final photos = await GalleryRepository.instance.getPhotos();
-      final albums = await GalleryRepository.instance.getAlbums();
       if (!mounted) return;
       setState(() {
         _photos = photos;
-        _displayedPhotos = photos;
-        _albumCount = albums.length;
         _loading = false;
         _error = null;
         _selected.clear();
-        _searchQuery = '';
       });
     } catch (_) {
       if (!mounted) return;
@@ -64,40 +57,6 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
         _error = 'تعذر تحميل الصور من قاعدة البيانات';
       });
     }
-  }
-
-  List<AlbumPhoto> _filteredPhotos(String query) {
-    if (query.isEmpty) return _photos;
-    final q = query.toLowerCase();
-    return _photos
-        .where(
-          (p) =>
-              p.title.toLowerCase().contains(q) ||
-              p.date.toLowerCase().contains(q),
-        )
-        .toList();
-  }
-
-  void _openSearch() {
-    showSearch(
-      context: context,
-      delegate: _GallerySearchDelegate(
-        onResult: (query) {
-          setState(() {
-            _searchQuery = query;
-            _displayedPhotos = _filteredPhotos(query);
-            _selected.clear();
-          });
-        },
-        onClear: () {
-          setState(() {
-            _searchQuery = '';
-            _displayedPhotos = _photos;
-            _selected.clear();
-          });
-        },
-      ),
-    );
   }
 
   Future<void> _shareSelected() async {
@@ -122,6 +81,34 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
     );
     if (!mounted) return;
     _clearSelection();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1920,
+    );
+    if (picked == null || !mounted) return;
+
+    try {
+      final bytes = await picked.readAsBytes();
+      final fileName = picked.name.split('/').last;
+
+      await GalleryRepository.instance.addPhoto(
+        title: fileName,
+        date: 'اليوم',
+        assetPath: picked.path,
+        imageBytes: bytes,
+        isFavorite: false,
+      );
+
+      await _load();
+      if (mounted) showAppToast(context, 'تم إضافة الصورة: $fileName');
+    } catch (e) {
+      if (mounted) showAppToast(context, 'فشل إضافة الصورة');
+    }
   }
 
   Future<void> _deleteSelected() async {
@@ -156,56 +143,6 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
     if (mounted) showAppToast(context, 'تم حذف $count صورة');
   }
 
-  void _showMoreSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.outlineVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(
-                Icons.refresh,
-                color: AppColors.primaryContainer,
-              ),
-              title: const Text('تحديث المعرض'),
-              onTap: () {
-                Navigator.pop(context);
-                _load();
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.info_outline,
-                color: AppColors.primaryContainer,
-              ),
-              title: const Text('عن التطبيق'),
-              onTap: () {
-                Navigator.pop(context);
-                showAppToast(context, 'Obsidian Vault - معرض خاص وأوفلاين');
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -228,10 +165,10 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
 
   void _selectAll() {
     setState(() {
-      if (_selected.length == _displayedPhotos.length) {
+      if (_selected.length == _photos.length) {
         _selected.clear();
       } else {
-        _selected.addAll(List.generate(_displayedPhotos.length, (i) => i));
+        _selected.addAll(List.generate(_photos.length, (i) => i));
       }
     });
   }
@@ -303,12 +240,9 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
         }
         break;
       case 1:
-        _push(const AlbumsScreen());
-        break;
-      case 2:
         _push(const FavoritesScreen());
         break;
-      case 3:
+      case 2:
         _push(const SettingsScreen());
         break;
     }
@@ -328,7 +262,7 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
                   ? _SelectionHeader(
                       key: const ValueKey('selection'),
                       count: _selected.length,
-                      total: _displayedPhotos.length,
+                      total: _photos.length,
                       onClose: _clearSelection,
                       onSelectAll: _selectAll,
                     )
@@ -337,14 +271,18 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
                       title: 'الصور',
                       subtitle: _loading
                           ? 'جارٍ تحميل الصور...'
-                          : '${_displayedPhotos.length} صورة • $_albumCount ألبومات',
-                      onSearch: _openSearch,
-                      onMore: _showMoreSheet,
+                          : '${_photos.length} صورة',
+                      onSearch: null,
+                      onMore: () {},
                     ),
             ),
             Expanded(child: _buildGallery()),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _pickImage,
+        child: const Icon(Icons.add_photo_alternate),
       ),
       bottomNavigationBar: _selectionMode
           ? _SelectionDock(
@@ -381,23 +319,21 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
       );
     }
 
-    if (_displayedPhotos.isEmpty) {
+    if (_photos.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.search_off,
-              size: 48,
+              Icons.photo_library_outlined,
+              size: 64,
               color: AppColors.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
-            Text('لا توجد نتائج', style: AppTextStyles.headlineSmall()),
-            const SizedBox(height: 4),
+            const SizedBox(height: 16),
+            Text('لا توجد صور', style: AppTextStyles.headlineSmall()),
+            const SizedBox(height: 8),
             Text(
-              _searchQuery.isNotEmpty
-                  ? 'جرّب كلمة بحث أخرى'
-                  : 'لا توجد صور في المعرض',
+              'أضف صورك الأولى من خيار إضافة صورة',
               style: AppTextStyles.bodySmall(AppColors.onSurfaceVariant),
             ),
           ],
@@ -405,85 +341,40 @@ class _HomeGalleryScreenState extends State<HomeGalleryScreen> {
       );
     }
 
-    final groups = <String, List<MapEntry<int, AlbumPhoto>>>{};
-    for (final entry in _displayedPhotos.asMap().entries) {
-      groups.putIfAbsent(entry.value.date, () => []).add(entry);
-    }
-
     return CustomScrollView(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
       slivers: [
         const SliverToBoxAdapter(child: SizedBox(height: 4)),
-        for (final group in groups.entries) ...[
-          SliverToBoxAdapter(
-            child: _SectionTitle(title: group.key, count: group.value.length),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 2,
-                crossAxisSpacing: 2,
-              ),
-              delegate: SliverChildBuilderDelegate((context, i) {
-                final entry = group.value[i];
-                return PhotoTile(
-                  photoId: entry.value.id,
-                  favorite: entry.value.isFavorite,
-                  selected: _selected.contains(entry.key),
-                  borderRadius: BorderRadius.circular(2),
-                  onTap: () {
-                    if (_selectionMode) {
-                      _toggleSelect(entry.key);
-                    } else {
-                      _openViewer(entry.key);
-                    }
-                  },
-                  onLongPress: () => _startSelection(entry.key),
-                );
-              }, childCount: group.value.length),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 2,
+              crossAxisSpacing: 2,
             ),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final photo = _photos[i];
+              return PhotoTile(
+                photoId: photo.id,
+                favorite: photo.isFavorite,
+                selected: _selected.contains(i),
+                borderRadius: BorderRadius.circular(2),
+                onTap: () {
+                  if (_selectionMode) {
+                    _toggleSelect(i);
+                  } else {
+                    _openViewer(i);
+                  }
+                },
+                onLongPress: () => _startSelection(i),
+              );
+            }, childCount: _photos.length),
           ),
-        ],
+        ),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final int count;
-
-  const _SectionTitle({required this.title, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-      child: Row(
-        children: [
-          Text(title, style: AppTextStyles.headlineSmall()),
-          const SizedBox(width: 8),
-          Container(
-            width: 4,
-            height: 4,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryContainer,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '$count صور',
-            style: AppTextStyles.labelMonoSmall(
-              AppColors.outline,
-            ).copyWith(fontSize: 10),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -592,46 +483,6 @@ class _SelectionDock extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _GallerySearchDelegate extends SearchDelegate<String> {
-  final ValueChanged<String> onResult;
-  final VoidCallback onClear;
-
-  _GallerySearchDelegate({required this.onResult, required this.onClear});
-
-  @override
-  List<Widget> buildActions(BuildContext context) {
-    return [
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () {
-          query = '';
-          onClear();
-        },
-      ),
-    ];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.arrow_back),
-      onPressed: () => close(context, ''),
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    onResult(query);
-    close(context, query);
-    return const SizedBox.shrink();
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    return const Center(child: Text('ابحث عن عنوان الصورة أو التاريخ'));
   }
 }
 

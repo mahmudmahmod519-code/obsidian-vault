@@ -16,9 +16,8 @@ class AppBottomNav extends StatelessWidget {
 
   static const _items = [
     (Icons.photo_library_outlined, Icons.photo_library, 'الصور'),
-    (Icons.photo_album_outlined, Icons.photo_album, 'الألبومات'),
     (Icons.favorite_border, Icons.favorite, 'المفضلة'),
-    (Icons.shield_outlined, Icons.shield, 'الأمان'),
+    (Icons.settings_outlined, Icons.settings, 'الإعدادات'),
   ];
 
   @override
